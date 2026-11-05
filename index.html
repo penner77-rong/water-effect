@@ -1,0 +1,1519 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="A typographic study viewed through a moving water surface."
+    />
+    <title>Hello world — Water study</title>
+    <style>
+      :root { background: #e1f0f8; }
+
+      * { box-sizing: border-box; }
+
+      html,
+      body,
+      main {
+        width: 100%;
+        min-height: 100%;
+        margin: 0;
+      }
+
+      body {
+        overflow: hidden;
+        background: #e1f0f8;
+        color: #86cee1;
+        font-family: Inter, Arial, sans-serif;
+      }
+
+      main {
+        position: relative;
+        height: 100svh;
+        isolation: isolate;
+      }
+
+      /* Semantic fallback. The shader recreates this composition as a texture so
+         it can refract every part of the visible background. */
+      .fallback-title {
+        position: absolute;
+        top: 46.1%;
+        left: 50%;
+        width: 100%;
+        margin: 0;
+        transform: translate(-50%, -50%);
+        color: #86cee1;
+        font-family: Inter, Arial, sans-serif;
+        font-size: clamp(4.75rem, 12.5vw, 11.25rem);
+        font-weight: 900;
+        letter-spacing: -0.065em;
+        line-height: 1;
+        text-align: center;
+        white-space: nowrap;
+      }
+
+      #water {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        transition: opacity 900ms ease;
+      }
+
+      main.is-ready #water { opacity: 1; }
+      main.is-ready .fallback-title { opacity: 0; }
+
+      #click-effects {
+        position: absolute;
+        inset: 0;
+        z-index: 3;
+        pointer-events: none;
+        overflow: hidden;
+      }
+
+      .click-burst { position: absolute; width: 0; height: 0; }
+      .click-star,
+      .click-particle { position: absolute; transform: translate(-50%, -50%); }
+      .click-star {
+        color: hsl(var(--hue) 100% 98%);
+        font: var(--size)/1 Georgia, serif;
+        text-shadow:
+          0 0 5px hsl(var(--hue) 100% 96% / 98%),
+          0 0 15px hsl(var(--hue) 96% 78% / 88%),
+          0 0 26px hsl(var(--hue) 92% 72% / 52%);
+        animation: click-star 1000ms ease-out var(--delay) both;
+      }
+      .click-particle {
+        width: var(--size);
+        height: var(--size);
+        border-radius: 50%;
+        background: hsl(var(--hue) 96% 86% / 88%);
+        box-shadow:
+          0 0 6px hsl(var(--hue) 100% 94% / 92%),
+          0 0 15px hsl(var(--hue) 94% 74% / 66%);
+        animation: click-particle 1200ms ease-out var(--delay) both;
+      }
+      @keyframes click-star {
+        0% { opacity: 0; transform: translate(-50%, -50%) scale(.15) rotate(-14deg); }
+        38% { opacity: .92; transform: translate(-50%, -50%) scale(1.2) rotate(7deg); }
+        100% { opacity: 0; transform: translate(calc(-50% + var(--drift-x)), calc(-50% + var(--drift-y))) scale(.45) rotate(18deg); }
+      }
+      @keyframes click-particle {
+        0% { opacity: 0; transform: translate(-50%, -50%) scale(.25); }
+        25% { opacity: .8; }
+        100% { opacity: 0; transform: translate(calc(-50% + var(--drift-x)), calc(-50% + var(--drift-y))) scale(.5); }
+      }
+
+      .control-toggle,
+      .water-controls {
+        position: fixed;
+        z-index: 4;
+      }
+
+      .control-toggle {
+        right: 1.25rem;
+        bottom: 1.25rem;
+        display: grid;
+        width: 3rem;
+        height: 3rem;
+        place-items: center;
+        border: 1px solid rgb(255 255 255 / 75%);
+        border-radius: 50%;
+        background: rgb(255 255 255 / 82%);
+        box-shadow: 0 10px 30px rgb(68 116 133 / 20%);
+        color: #35677a;
+        cursor: pointer;
+      }
+
+      .control-toggle:hover { background: #fff; }
+
+      .sound-toggle {
+        position: fixed;
+        left: 1.25rem;
+        bottom: 1.25rem;
+        z-index: 4;
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        min-height: 3rem;
+        padding: 0 .9rem;
+        border: 1px solid rgb(255 255 255 / 75%);
+        border-radius: 999px;
+        background: rgb(255 255 255 / 82%);
+        box-shadow: 0 10px 30px rgb(68 116 133 / 20%);
+        color: #35677a;
+        font: 700 .78rem/1 Inter, Arial, sans-serif;
+        cursor: pointer;
+      }
+
+      .sound-toggle:hover { background: #fff; }
+      .sound-toggle[aria-pressed="true"] { background: #d9f3f8; }
+      .sound-toggle:focus-visible, .control-toggle:focus-visible { outline: 2px solid #287f9e; outline-offset: 3px; }
+      .sound-toggle svg { width: 1.1rem; height: 1.1rem; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+
+      .water-controls {
+        right: 1.25rem;
+        bottom: 4.9rem;
+        width: min(19rem, calc(100vw - 2.5rem));
+        padding: 1rem;
+        border: 1px solid rgb(32 70 86 / 12%);
+        border-radius: 1rem;
+        background: rgb(255 255 255 / 92%);
+        box-shadow: 0 20px 60px rgb(47 90 108 / 22%);
+        color: #254e60;
+        backdrop-filter: blur(16px);
+        transform: translateY(0);
+        transition: opacity 180ms ease, transform 180ms ease;
+        max-height: calc(100svh - 6.5rem);
+        overflow: auto;
+      }
+
+      .control-header,
+      .control-field {
+        display: flex;
+        align-items: center;
+      }
+
+      .control-header {
+        justify-content: space-between;
+        margin-bottom: 1rem;
+      }
+
+      .control-header strong { font-size: .95rem; }
+      .control-header span { color: #7793a0; font-size: .75rem; }
+
+      .control-field { gap: .65rem; margin-top: .85rem; }
+      .control-field label { min-width: 4.7rem; font-size: .76rem; font-weight: 700; }
+      .control-field input[type="range"] { width: 100%; accent-color: #4a9ebc; }
+      .control-field output { min-width: 2.8rem; color: #56727f; font-size: .73rem; text-align: right; }
+      .upload-group { margin-top: .25rem; padding-bottom: .85rem; border-bottom: 1px solid rgb(32 70 86 / 10%); }
+      .upload-label { display: block; margin-bottom: .42rem; font-size: .76rem; font-weight: 700; }
+      .upload-row { display: flex; gap: .45rem; }
+      .upload-row input[type="file"] { width: 100%; min-width: 0; color: #56727f; font: 600 .7rem/1.3 Inter, Arial, sans-serif; }
+      .reset-background { padding: .38rem .55rem; border: 1px solid #d5e3e9; border-radius: .45rem; background: #f6fafb; color: #35677a; font: 700 .7rem/1 Inter, Arial, sans-serif; cursor: pointer; white-space: nowrap; }
+      .upload-help { margin: .5rem 0 0; color: #7793a0; font-size: .68rem; line-height: 1.4; }
+      .control-section { margin: .9rem 0 .15rem; color: #35677a; font-size: .76rem; font-weight: 800; }
+
+      @media (prefers-reduced-motion: reduce) {
+        #water { transition: none; }
+      }
+      .picker { padding: .6rem; background: white; border: 1px solid #d6e4e8; border-radius: .6rem; font: 600 .77rem Arial,sans-serif; }
+      .picker summary { cursor: pointer; line-height: 1.6rem; }
+      #shadow-chip { float:right; width:2.5rem; height:1.55rem; border-radius:.35rem; border:1px solid #abc; }
+      #shadow-plane { position:relative; margin:.6rem 0; height:9rem; border-radius:.4rem; background:linear-gradient(to top,black,transparent),linear-gradient(to right,white,transparent),var(--hue); touch-action:none; cursor:crosshair; }
+      #shadow-plane i { position:absolute; width:12px; height:12px; border:2px solid white; box-shadow:0 0 2px black; border-radius:50%; transform:translate(-50%,-50%); pointer-events:none; }
+      .picker label { display:flex; align-items:center; gap:.6rem; margin-top:.5rem; }
+      .picker input { min-width:0; flex:1; }
+      #shadow-hue { appearance:none; height:8px; border-radius:6px; background:linear-gradient(to right,red,yellow,lime,cyan,blue,magenta,red); }
+      #shadow-hex { border:1px solid #cfdee3; border-radius:.3rem; padding:.3rem; font:inherit; }
+      .bg-editor { margin-top:.55rem; }
+      .bg-editor button,.bg-editor select,.bg-editor input:not([type=color]),.bg-editor textarea { font:inherit; color:inherit; background:#f5f8f9; border:1px solid #d4e0e5; border-radius:.35rem; padding:.3rem; }
+      .bg-editor button { cursor:pointer; }
+      .bg-editor textarea,.bg-editor select { flex:1; min-width:0; }
+      .editor-tools,.stop-row { display:flex; align-items:center; gap:.35rem; margin:.55rem 0; }
+      .editor-tools b { margin-right:auto; }
+      #grad-track { position:relative; margin:1rem .6rem; height:2rem; border-radius:.45rem; box-shadow:inset 0 0 0 1px #0002; }
+      #grad-track button { position:absolute; top:-.35rem; transform:translateX(-50%); width:1.15rem; height:1.4rem; border:2px solid white; box-shadow:0 0 0 1px #678; touch-action:none; cursor:ew-resize; }
+      .stop-row input[type=number] { width:3rem; flex:auto; }
+      .stop-row input[type=color] { width:2rem; height:1.65rem; }
+      #bg-library { margin-top:.5rem; }
+      #font-status,#bg-image-note:not([hidden]) { display:block; margin-top:.4rem; }
+    </style>
+  </head>
+  <body>
+    <main aria-label="Hello world water study">
+      <h1 class="fallback-title">Hello world</h1>
+      <canvas id="water" aria-hidden="true"></canvas>
+      <div id="click-effects" aria-hidden="true"></div>
+      <aside class="water-controls" id="water-controls" aria-label="Water and wave controls" hidden>
+        <div class="control-header">
+          <strong>Ripple controls</strong>
+          <span>Customise</span>
+        </div>
+        <div class="upload-group">
+          <label class="upload-label" for="background-upload">Background image</label>
+          <div class="upload-row">
+            <input id="background-upload" type="file" accept="image/*" />
+            <button class="reset-background" id="reset-background" type="button">Reset</button>
+          </div>
+          <p class="upload-help">Your image stays beneath the transparent water layer. It is displayed full-screen and cropped to fill.</p>
+        </div>
+        <details class="picker bg-editor"><summary>Background gradient</summary>
+          <div class="editor-tools"><b>Linear</b><button id="grad-flip" title="Reverse stops">⇄ Reverse</button>
+            <button id="grad-rotate" title="Rotate 90 degrees">↻ Rotate</button></div>
+          <div id="grad-track" aria-label="Gradient stop positions"></div>
+          <div class="editor-tools"><b>Stops</b><button id="grad-add">+ Add stop</button></div>
+          <div id="grad-stops"></div>
+        </details>
+        <details class="picker bg-editor"><summary>Background text</summary>
+          <label>Content <textarea id="bg-copy" rows="2">Hello world</textarea></label>
+          <label>Font <input id="bg-font" list="bg-fonts" value="Arial"></label>
+          <datalist id="bg-fonts"><option>Arial</option><option>Georgia</option><option>Helvetica Neue</option><option>Times New Roman</option></datalist>
+          <button id="bg-library">Browse installed fonts</button>
+          <small id="font-status" role="status"></small>
+          <label>Size (px) <input id="bg-size" type="number" min="1" max="1000" placeholder="Auto"></label>
+          <label>Weight <select id="bg-weight"><option value="400">Regular</option><option value="500">Medium</option><option value="700">Bold</option><option selected value="900">Black</option></select></label>
+          <label>Color <input type="color" id="bg-ink" value="#86cee1"></label>
+        </details>
+        <small id="bg-image-note" hidden>Reset the uploaded image to see your gradient and text.</small>
+        <p class="control-section">Ripple lighting</p>
+        <details class="picker">
+          <summary>Shadow color <span id="shadow-chip"></span></summary>
+          <div id="shadow-plane" aria-label="Shadow saturation and brightness"><i></i></div>
+          <label>Hue <input id="shadow-hue" type="range" min="0" max="360" value="196"></label>
+          <label>Opacity <input id="shadow-opacity" type="range" min="0" max="100" value="100"><output>100%</output></label>
+          <label>Hex <input id="shadow-hex" value="#3387A6" maxlength="7" spellcheck="false"><button type="button" id="sample-shadow" hidden>Sample</button></label>
+        </details>
+        <div class="control-field">
+          <label for="highlights">Highlight brightness</label>
+          <input id="highlights" type="range" min="0" max="250" value="100"><output>100%</output>
+        </div>
+        <div class="control-field">
+          <label for="refraction">Refraction</label>
+          <input id="refraction" type="range" min="0" max="200" value="100"><output>100%</output>
+        </div>
+        <p class="control-section">Click ripple</p>
+        <div class="control-field">
+          <label for="click-size">Size</label>
+          <input id="click-size" type="range" min="90" max="320" value="205" />
+          <output for="click-size">205 px</output>
+        </div>
+        <div class="control-field">
+          <label for="click-fade">Fade out</label>
+          <input id="click-fade" type="range" min="1" max="5" step="0.5" value="3" />
+          <output for="click-fade">3 s</output>
+        </div>
+        <p class="control-section">Drag wake</p>
+        <div class="control-field">
+          <label for="wake-strength">Strength</label>
+          <input id="wake-strength" type="range" min="40" max="180" value="100" />
+          <output for="wake-strength">100%</output>
+        </div>
+        <div class="control-field">
+          <label for="wake-width">Spread</label>
+          <input id="wake-width" type="range" min="50" max="180" value="100" />
+          <output for="wake-width">100%</output>
+        </div>
+        <div class="control-field">
+          <label for="wake-angle">Slow V opening</label>
+          <input id="wake-angle" type="range" min="18" max="96" value="52" />
+          <output for="wake-angle">52°</output>
+        </div>
+        <div class="control-field">
+          <label for="wake-fade">Fade out</label>
+          <input id="wake-fade" type="range" min="2" max="6" step="0.5" value="4" />
+          <output for="wake-fade">4 s</output>
+        </div>
+        <p class="control-section">Passive water</p>
+        <div class="control-field">
+          <label for="edge-energy">Edge motion</label>
+          <input id="edge-energy" type="range" min="0" max="160" value="100" />
+          <output for="edge-energy">100%</output>
+        </div>
+        <p class="control-section">Audio</p>
+        <div class="control-field">
+          <label for="audio-volume">Volume</label>
+          <input id="audio-volume" type="range" min="0" max="100" value="85" />
+          <output for="audio-volume">85%</output>
+        </div>
+      </aside>
+      <button class="sound-toggle" id="sound-toggle" type="button" aria-pressed="false" aria-label="Turn on interaction sounds">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M17 9a5 5 0 0 1 0 6"/></svg>
+        <span id="sound-label">Sound off</span>
+      </button>
+      <audio id="stir-audio" src="audio/water-stirring.mp3" preload="auto" loop hidden></audio>
+      <button class="control-toggle" id="control-toggle" type="button" aria-expanded="false" aria-controls="water-controls" aria-label="Open water controls">☷</button>
+    </main>
+
+    <script>
+      (() => {
+        const canvas = document.querySelector('#water');
+        const effectsLayer = document.querySelector('#click-effects');
+        const stage = document.querySelector('main');
+        const controls = document.querySelector('#water-controls');
+        const controlToggle = document.querySelector('#control-toggle');
+        const soundToggle = document.querySelector('#sound-toggle');
+        const soundLabel = document.querySelector('#sound-label');
+        const stirAudio = document.querySelector('#stir-audio');
+        const backgroundUpload = document.querySelector('#background-upload');
+        const resetBackground = document.querySelector('#reset-background');
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const gl = canvas.getContext('webgl', {
+          alpha: false,
+          antialias: false,
+          powerPreference: 'high-performance',
+        });
+
+        if (!gl) return;
+
+        const vertexSource = `
+          attribute vec2 aPosition;
+          varying vec2 vUv;
+          void main() {
+            vUv = aPosition * 0.5 + 0.5;
+            gl_Position = vec4(aPosition, 0.0, 1.0);
+          }
+        `;
+
+        const fragmentSource = `
+          precision highp float;
+          uniform sampler2D uBackground;
+          uniform sampler2D uRipple;
+          uniform vec2 uResolution;
+          uniform vec2 uRippleTexel;
+          uniform vec4 uShadow;
+          uniform float uHighlights;
+          uniform float uRefraction;
+          uniform float uTime;
+          uniform float uRippleStrength;
+          uniform vec3 uDepthColor;
+          uniform float uDepthOpacity;
+          varying vec2 vUv;
+
+          // Compact value-noise field: layered movement avoids a tiled wave pattern.
+          float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+          }
+
+          float noise(vec2 p) {
+            vec2 i = floor(p);
+            vec2 f = fract(p);
+            f = f * f * (3.0 - 2.0 * f);
+            return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
+                       mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+          }
+
+          float fbm(vec2 p) {
+            float value = 0.0;
+            float amplitude = 0.5;
+            mat2 turn = mat2(0.80, -0.60, 0.60, 0.80);
+            for (int i = 0; i < 5; i++) {
+              value += amplitude * noise(p);
+              p = turn * p * 2.03 + 11.7;
+              amplitude *= 0.5;
+            }
+            return value;
+          }
+
+          vec2 hash2(vec2 p) {
+            return fract(sin(vec2(
+              dot(p, vec2(127.1, 311.7)),
+              dot(p, vec2(269.5, 183.3))
+            )) * 43758.5453123);
+          }
+
+          // Returns the nearest and second-nearest cellular distances. Their
+          // difference is a naturally irregular cell boundary rather than a grid.
+          vec2 cellular(vec2 p) {
+            vec2 cell = floor(p);
+            vec2 local = fract(p);
+            float nearest = 8.0;
+            float nextNearest = 8.0;
+            for (int y = -1; y <= 1; y++) {
+              for (int x = -1; x <= 1; x++) {
+                vec2 offset = vec2(float(x), float(y));
+                vec2 point = hash2(cell + offset);
+                vec2 distanceToPoint = offset + point - local;
+                float distance = dot(distanceToPoint, distanceToPoint);
+                if (distance < nearest) {
+                  nextNearest = nearest;
+                  nearest = distance;
+                } else if (distance < nextNearest) {
+                  nextNearest = distance;
+                }
+              }
+            }
+            return sqrt(vec2(nearest, nextNearest));
+          }
+
+          float rippleHeightAt(vec2 uv) {
+            vec2 encodedHeight = texture2D(uRipple, uv).rg;
+            return (dot(encodedHeight, vec2(65280.0, 255.0)) - 32768.0) / 32768.0;
+          }
+
+          void main() {
+            vec2 uv = vUv;
+            float time = uTime * 0.12;
+            // One downstream current carries every passive water detail from
+            // the top-left toward the bottom-right of the container.
+            vec2 flowDirection = normalize(vec2(0.78, 0.62));
+            vec2 wind = -flowDirection * time * 0.78;
+            vec2 p = uv * vec2(uResolution.x / uResolution.y, 1.0);
+
+            // Sample a spatially offset height field to approximate a water normal.
+            float center = fbm(p * 2.25 + wind);
+            float east = fbm((p + vec2(0.008, 0.0)) * 2.25 + wind);
+            float west = fbm((p - vec2(0.008, 0.0)) * 2.25 + wind);
+            float north = fbm((p + vec2(0.0, 0.008)) * 2.25 + wind);
+            float south = fbm((p - vec2(0.0, 0.008)) * 2.25 + wind);
+            vec2 normal = vec2(east - center, north - center);
+            float curvature = east + west + north + south - center * 4.0;
+
+            // A lower-frequency normal gives the refraction its large, slow
+            // sway. This is what makes lettering beneath clear water bend in
+            // visible fields rather than only shimmer at the edges.
+            float broadCenter = fbm(p * 0.56 + wind * 0.38);
+            float broadEast = fbm((p + vec2(0.016, 0.0)) * 0.56 + wind * 0.38);
+            float broadNorth = fbm((p + vec2(0.0, 0.016)) * 0.56 + wind * 0.38);
+            vec2 broadNormal = vec2(broadEast - broadCenter, broadNorth - broadCenter);
+
+            // Two texture channels preserve small wave heights as they fade.
+            float rippleEast = rippleHeightAt(uv + vec2(uRippleTexel.x, 0.0));
+            float rippleWest = rippleHeightAt(uv - vec2(uRippleTexel.x, 0.0));
+            float rippleNorth = rippleHeightAt(uv + vec2(0.0, uRippleTexel.y));
+            float rippleSouth = rippleHeightAt(uv - vec2(0.0, uRippleTexel.y));
+            vec2 rippleNormal = vec2(rippleEast - rippleWest, rippleNorth - rippleSouth);
+            rippleNormal *= uRippleStrength;
+
+            // Bend the reflected sky in scene space and the submerged image in UV space.
+            vec2 skyOffset = rippleNormal * 10.0 / (1.0 + length(rippleNormal) * 38.0);
+            vec2 rippleRefraction = skyOffset * 0.16 * vec2(uResolution.y / uResolution.x, 1.0);
+            float micro = fbm(p * 12.0 + wind * 2.7) - 0.5;
+            vec2 refraction = normal * 0.24 + broadNormal * 0.72
+              + vec2(micro * 0.0062, micro * 0.0042) + rippleRefraction * uRefraction;
+            vec3 background = texture2D(uBackground, uv - refraction).rgb;
+
+            // Large, flowing cellular caustics. Domain warping lets the cells
+            // drift and reform like refracted light on shallow moving water.
+            vec2 flowDomain = p * 0.82 + wind * 1.18;
+            vec2 flow = vec2(
+              fbm(flowDomain + vec2(1.8, -0.7)),
+              fbm(flowDomain + vec2(-2.4, 3.1))
+            ) - 0.5;
+            vec2 smallFlowDomain = p * 2.65 + wind * 2.05;
+            vec2 smallFlow = vec2(
+              fbm(smallFlowDomain + vec2(-3.1, 1.6)),
+              fbm(smallFlowDomain + vec2(2.2, -4.0))
+            ) - 0.5;
+            // Fine caustics sit above the broader water-value field. Their
+            // boundary lines are a surface detail, not the source of depth.
+            vec2 cells = cellular(p * 3.35 + flow * 2.72 + smallFlow * 0.70 + wind * 0.26);
+            float borderDistance = cells.y - cells.x;
+            float causticLine = 1.0 - smoothstep(0.016, 0.051, borderDistance);
+            // Break the boundaries into a sparse, secondary light texture.
+            // Complete connected edges are perceived as a grid, not water.
+            float glintField = fbm(p * 1.08 + flow * 1.3 + wind * 0.32);
+            causticLine *= smoothstep(0.52, 0.79, glintField);
+
+            // Large, slow-moving value regions carry the water's depth. They
+            // cross the fine caustics, like shade moving beneath refracted light.
+            vec2 macroFlowDomain = p * 0.48 + wind * 0.40;
+            vec2 macroFlow = vec2(
+              fbm(macroFlowDomain + vec2(0.8, 2.6)),
+              fbm(macroFlowDomain + vec2(-2.9, -1.2))
+            ) - 0.5;
+            // Three enormous, feathered value fields give the *single* water
+            // surface depth. They alter colour only—never the image sampling—
+            // so the title cannot split into a second refracted layer.
+            vec2 basinA = p - (vec2(0.46, 0.42) + macroFlow * 0.12);
+            vec2 basinB = p - (vec2(1.34, 0.68) - macroFlow.yx * 0.10);
+            vec2 basinC = p - (vec2(0.98, 0.12) + macroFlow * vec2(-0.08, 0.06));
+            float volumeA = exp(-dot(basinA * vec2(0.74, 1.22), basinA * vec2(0.74, 1.22)) * 2.15);
+            float volumeB = exp(-dot(basinB * vec2(0.62, 1.05), basinB * vec2(0.62, 1.05)) * 2.45);
+            float volumeC = exp(-dot(basinC * vec2(0.90, 1.34), basinC * vec2(0.90, 1.34)) * 2.90);
+            float rawDepthVolumes = clamp(volumeA * 0.72 + volumeB * 0.60 + volumeC * 0.38, 0.0, 1.0);
+            // Compress the broad field into clear shallow/deep value zones,
+            // while retaining a long feathered transition between them.
+            float depthVolumes = smoothstep(0.22, 0.80, rawDepthVolumes);
+            // The pool slopes continuously away from its light, shallow
+            // top-left corner into deeper water at the bottom-right.
+            float diagonalDepth = smoothstep(0.08, 0.92, (uv.x + uv.y) * 0.5);
+
+            // Reflected clouds use several gently deforming fields, not one
+            // large texture sliding over the lake. The slow cross-current
+            // changes their silhouette as they drift, like clouds reshaping
+            // across a reflected sky.
+            vec2 cloudCurrent = wind * 0.34 + macroFlow * 0.52;
+            vec2 cloudWarp = vec2(
+              fbm(p * 0.82 + wind * 0.22 + vec2(time * 0.20, -time * 0.13)),
+              fbm(p * 0.76 + wind * 0.19 + vec2(-time * 0.16, time * 0.17))
+            ) - 0.5;
+            vec2 cloudDrift = p * 0.78 + cloudCurrent + cloudWarp * 0.32 + skyOffset;
+            float cloudBase = fbm(cloudDrift);
+            float cloudBreak = fbm(cloudDrift * 1.72 + cloudWarp * 0.68 + vec2(4.7, -2.3));
+            float cloudWisps = fbm((p + skyOffset) * 1.18 + cloudCurrent * 1.35 - cloudWarp * 0.44 + vec2(-time * 0.09, time * 0.12));
+            float cloudField = cloudBase * 0.50 + cloudBreak * 0.32 + cloudWisps * 0.18;
+            float cloudReflection = smoothstep(0.47, 0.66, cloudField);
+            float cloudCore = smoothstep(0.60, 0.77, cloudField);
+            float macroShade = fbm(p * 1.18 + macroFlow * 1.9 + flow * 0.72 - wind * 0.15);
+            float secondaryShade = fbm(p * 2.15 - macroFlow * 1.1 + flow * 1.35);
+            float poolDepthSlope = smoothstep(-0.15, 1.15, uv.y) * 0.12;
+            float deepRegions = smoothstep(0.37, 0.68,
+              macroShade * 0.72 + secondaryShade * 0.28 + poolDepthSlope);
+
+            // Treat the surface normal as a gently angled sunlit plane. Its
+            // light direction controls how strongly each caustic glows, and
+            // curvature adds small focal variations where the surface bends.
+            vec2 passiveSlope = normal * 34.0 + broadNormal * 8.0;
+            // Keep interactive waves broad and low-sloped so the light reads
+            // as water, rather than a sharp embossed edge.
+            vec2 waveTilt = rippleNormal * 64.0;
+            vec2 waterSlope = passiveSlope + waveTilt / (1.0 + length(waveTilt));
+            vec3 surfaceNormal = normalize(vec3(waterSlope, 1.0));
+            vec3 sunlightDirection = normalize(vec3(-0.42, 0.30, 0.86));
+            float sunFacing = clamp(dot(surfaceNormal, sunlightDirection), 0.0, 1.0);
+            float sunlight = smoothstep(0.43, 0.93, sunFacing);
+            float focalVariation = smoothstep(0.0008, 0.006, abs(curvature));
+            // Broad diagonal pools make the lighting legible before the eye
+            // notices the fine caustic detail.
+            float sunSweep = 0.5 + 0.5 * sin(
+              (p.x * 0.72 - p.y * 1.34 + macroFlow.x * 1.55 + macroFlow.y * 0.86) * 6.28318
+            );
+            float sunPools = smoothstep(0.56, 0.92, sunSweep)
+              * smoothstep(0.32, 0.78, fbm(p * 0.76 - macroFlow * 1.45));
+
+            // Use three transparent water values rather than a grey veil:
+            // clear cyan shallows, teal mid-water, and a blue-green depth.
+            // This gives the lake volume without making the page underneath
+            // appear cloudy or opaque.
+            // Clear water begins with the background itself. Its colour is
+            // transmitted through depth, rather than laid over as a veil.
+            float waterTint = uDepthOpacity * (0.18 + fbm(p * 0.72 - wind) * 0.055);
+            float midRegions = smoothstep(0.24, 0.61,
+              macroShade * 0.64 + secondaryShade * 0.36 + poolDepthSlope * 0.56);
+            midRegions *= 1.0 - deepRegions * 0.68;
+            vec3 shallowWater = mix(background, uDepthColor, waterTint);
+            vec3 midWater = mix(uDepthColor, vec3(0.090, 0.56, 0.61), 0.40);
+            vec3 deepWater = mix(uDepthColor, vec3(0.060, 0.44, 0.48), 0.50);
+            background = shallowWater;
+            background = mix(background, midWater, midRegions * (0.050 + uDepthOpacity * 0.16));
+            background = mix(background, deepWater, deepRegions * (0.040 + uDepthOpacity * 0.12));
+            // The scene gradient is the visible background. Depth shifts it
+            // toward teal in a controlled transmission pass.
+            vec3 sunlitWater = mix(uDepthColor, vec3(0.52, 0.88, 0.90), 0.45);
+            float opticalDepth = diagonalDepth * 0.15 + depthVolumes * 0.075;
+            background = mix(background, deepWater, opticalDepth);
+            background = mix(background, sunlitWater, (1.0 - diagonalDepth) * 0.075);
+
+            // Reflection is composited as sky on the moving water plane, not
+            // added as a foggy white layer. A changing normal exposes more of
+            // the reflected sky at crests and less in calm, shallow areas.
+            float surfaceMotion = clamp(length(normal) * 82.0 + length(broadNormal) * 18.0, 0.0, 1.0);
+            float reflectionStrength = cloudReflection * (0.115 + surfaceMotion * 0.155);
+            vec3 skyReflection = mix(vec3(0.74, 0.89, 0.94), vec3(0.89, 0.96, 0.985), cloudCore);
+            background = mix(background, skyReflection, reflectionStrength * 1.16);
+            background = mix(background, vec3(0.91, 0.98, 1.0), cloudCore * (0.068 + surfaceMotion * 0.092));
+
+            // Sun catches only selected bends in the surface; it is a small,
+            // moving reflection rather than uniform screen brightness.
+            float sunGlint = sunPools * (0.18 + focalVariation * 0.82) * (0.30 + surfaceMotion * 0.70);
+            background = mix(background, vec3(0.78, 0.94, 0.98), sunGlint * 0.145);
+            float causticLight = 0.009 + sunlight * 0.015 + sunPools * 0.015 + focalVariation * 0.007;
+            background += vec3(0.84, 0.97, 1.0) * causticLine * causticLight;
+            // Compare the disturbed surface with the same undisturbed plane.
+            // Both passive motion and interaction use one light direction;
+            // adjacent wave slopes naturally form a bright and a dark side.
+            vec3 passiveSurfaceNormal = normalize(vec3(passiveSlope, 1.0));
+            float interactionSunDelta = dot(surfaceNormal, sunlightDirection)
+              - dot(passiveSurfaceNormal, sunlightDirection);
+            float localLight = 0.55 + cloudReflection * 0.28 + sunPools * 0.17;
+            // Softly compress the steepest slopes while preserving the sign
+            // of even small bends as a passing wave settles.
+            float relief = interactionSunDelta / (0.16 + abs(interactionSunDelta));
+            // Only sections of a tilted face catch the reflected sky.
+            float skyPatch = noise(p * 8.5 + cloudWarp + skyOffset * 3.0);
+            float crest = max(relief, 0.0) * localLight * mix(0.32, 1.48, smoothstep(0.24, 0.72, skyPatch));
+            float trough = max(-relief, 0.0) * localLight;
+            vec3 shadedWater = uShadow.rgb * mix(0.75, 1.1, dot(background, vec3(0.2126, 0.7152, 0.0722)));
+            vec3 litWater = mix(background, skyReflection, vec3(0.62, 0.88, 0.80));
+            float depth = max(-rippleHeightAt(uv) * uRippleStrength, 0.0);
+            float bodyShade = depth / (0.045 + depth);
+            background = mix(background, shadedWater, (localLight * bodyShade * 0.71 + trough * 0.25) * uShadow.a);
+            background = mix(background, litWater, min(1.0, crest * 1.12 * uHighlights));
+            gl_FragColor = vec4(background, 1.0);
+          }
+        `;
+
+        function compile(type, source) {
+          const shader = gl.createShader(type);
+          gl.shaderSource(shader, source);
+          gl.compileShader(shader);
+          if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            throw new Error(gl.getShaderInfoLog(shader));
+          }
+          return shader;
+        }
+
+        let program;
+        try {
+          program = gl.createProgram();
+          gl.attachShader(program, compile(gl.VERTEX_SHADER, vertexSource));
+          gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragmentSource));
+          gl.linkProgram(program);
+          if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+        } catch (error) {
+          console.warn('Water effect unavailable:', error);
+          return;
+        }
+
+        const position = gl.getAttribLocation(program, 'aPosition');
+        const resolution = gl.getUniformLocation(program, 'uResolution');
+        const time = gl.getUniformLocation(program, 'uTime');
+        const background = gl.getUniformLocation(program, 'uBackground');
+        const rippleUniform = gl.getUniformLocation(program, 'uRipple');
+        const rippleTexelUniform = gl.getUniformLocation(program, 'uRippleTexel');
+        const rippleStrengthUniform = gl.getUniformLocation(program, 'uRippleStrength');
+        const shadowUniform = gl.getUniformLocation(program, 'uShadow');
+        const highlightsUniform = gl.getUniformLocation(program, 'uHighlights');
+        const refractionUniform = gl.getUniformLocation(program, 'uRefraction');
+        let shadow = [0.2, 0.53, 0.65, 1];
+        let highlights = 1;
+        let refractionStrength = 1;
+        const depthColorUniform = gl.getUniformLocation(program, 'uDepthColor');
+        const depthOpacityUniform = gl.getUniformLocation(program, 'uDepthOpacity');
+        const vertices = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertices);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
+
+        const texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        const rippleTexture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, rippleTexture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        const source = document.createElement('canvas');
+        const sourceContext = source.getContext('2d');
+        const rippleCanvas = document.createElement('canvas');
+        const rippleContext = rippleCanvas.getContext('2d');
+        let rippleImage = null;
+        let clickRippleDuration = 3000;
+        let wakeRippleDuration = 4000;
+        const ambientRippleDuration = 4200;
+        let clickRippleSize = 205;
+        let wakeStrength = 1;
+        let wakeSpread = 1;
+        let wakeOpeningAngle = 52;
+        let edgeEnergy = 1;
+        let audioVolume = 0.85;
+        let rippleLayers = [];
+        let rippleComposite = null;
+        let rippleWidth = 0;
+        let rippleHeight = 0;
+        let wakeSamples = [];
+        let wakeHead = null;
+        let distanceSinceWake = 0;
+        let nextAmbientWaveAt = 0;
+        // Matches the shader: passive surface motion travels downstream from
+        // top-left to bottom-right. Pointer wakes keep their own direction.
+        const waterCurrent = { x: 0.78, y: 0.62 };
+        let depthColor = [0.314, 0.722, 0.769];
+        let depthOpacity = 0.26;
+        const bow = { count: 3, depth: 56, radius: 7, width: 4 };
+        const side = { count: 3, depth: 46, radius: 8, width: 3 };
+        const byId = id => document.getElementById(id);
+        const stops = [{ pos: 0, color: '#e1f0f8', alpha: 100 }, { pos: 100, color: '#94cdec', alpha: 100 }];
+        let rotation = 0;
+        const orderedStops = () => [...stops].sort((a,b) => a.pos - b.pos);
+        const stopColor = stop => stop.color + Math.round(stop.alpha * 2.55).toString(16).padStart(2,'0');
+        let uploadedBackground = null;
+        let previousPointer = null;
+        let soundEnabled = false;
+        let lastStirAt = 0;
+        let stirTargetVolume = 0;
+        let stirMotionEnergy = 0;
+        let stirVolumeTimer = null;
+        let nextDropVoice = 0;
+        const dropVoices = Array.from({ length: 4 }, () => {
+          const voice = new Audio('audio/water-drop.mp3');
+          voice.preload = 'auto';
+          return voice;
+        });
+        stirAudio.volume = 0;
+        let width = 0;
+        let height = 0;
+
+        function updateStirVolume() {
+          const elapsed = performance.now() - lastStirAt;
+          // Keep one water voice alive through minor pointer-event gaps.
+          // It begins its release only after the hand has actually paused,
+          // then settles naturally instead of cutting out mid-swipe.
+          const releaseStart = 280;
+          const releaseDuration = 780;
+          const fade = Math.max(0, 1 - Math.max(0, elapsed - releaseStart) / releaseDuration);
+          const target = soundEnabled && !document.hidden && elapsed < releaseStart + releaseDuration
+            ? stirTargetVolume * fade * audioVolume
+            : 0;
+          stirAudio.volume += (target - stirAudio.volume) * (target > stirAudio.volume ? 0.38 : 0.12);
+          stirAudio.playbackRate += (0.96 - stirAudio.playbackRate) * 0.025;
+          // Keep the loop silently pre-rolled while sound is enabled. Starting
+          // an HTML media element is the source of the perceptible first-swipe
+          // latency; changing its gain is effectively immediate.
+          if (!soundEnabled && target === 0 && stirAudio.volume < 0.008) {
+            stirAudio.volume = 0;
+            stirAudio.pause();
+          }
+        }
+
+        function playWakeSound(speed) {
+          if (!soundEnabled || document.hidden) return;
+          lastStirAt = performance.now();
+          const energy = Math.min(1, speed * 1.55);
+          // Smooth event-to-event pointer jitter, but keep the response
+          // immediate enough that a faster swipe sounds visibly stronger.
+          stirMotionEnergy += (energy - stirMotionEnergy) * 0.34;
+          // A light movement should still be audible; faster movement then
+          // builds distinctly in both loudness and texture.
+          stirTargetVolume = 0.30 + stirMotionEnergy * 0.70;
+          const targetRate = 0.96 + stirMotionEnergy * 0.32;
+          stirAudio.playbackRate += (targetRate - stirAudio.playbackRate) * 0.32;
+          if (stirAudio.paused) {
+            // Begin at the same short water onset on every new swipe instead
+            // of entering at a random quiet portion of the looping recording.
+            stirAudio.currentTime = 0;
+            stirAudio.volume = Math.max(stirAudio.volume, stirTargetVolume * 0.58 * audioVolume);
+            stirAudio.play().catch(() => {});
+          } else {
+            // Avoid waiting for the 32ms volume timer on the first pointer
+            // update of a sweep.
+            stirAudio.volume = Math.max(stirAudio.volume, stirTargetVolume * 0.24 * audioVolume);
+          }
+        }
+
+        function playDropSound() {
+          if (!soundEnabled || document.hidden) return;
+          const voice = dropVoices[nextDropVoice];
+          nextDropVoice = (nextDropVoice + 1) % dropVoices.length;
+          voice.pause();
+          voice.currentTime = 0;
+          voice.playbackRate = 0.94 + Math.random() * 0.12;
+          voice.volume = 0.88 * audioVolume;
+          voice.play().catch(() => {});
+        }
+
+        function drawBackground() {
+          source.width = width;
+          source.height = height;
+          if (uploadedBackground) {
+            // Uploaded art is the only replaceable layer. The water shader,
+            // wave simulation, lighting, and refraction remain unchanged.
+            const sourceRatio = uploadedBackground.width / uploadedBackground.height;
+            const canvasRatio = width / height;
+            let drawWidth = width;
+            let drawHeight = height;
+            let drawX = 0;
+            let drawY = 0;
+            if (sourceRatio > canvasRatio) {
+              drawWidth = height * sourceRatio;
+              drawX = (width - drawWidth) * 0.5;
+            } else {
+              drawHeight = width / sourceRatio;
+              drawY = (height - drawHeight) * 0.5;
+            }
+            sourceContext.drawImage(uploadedBackground, drawX, drawY, drawWidth, drawHeight);
+          } else {
+            const angle = Math.atan2(height,width) + rotation * Math.PI / 180;
+            const dx = Math.cos(angle), dy = Math.sin(angle);
+            const reach = (width * Math.abs(dx) + height * Math.abs(dy)) / 2;
+            const gradient = sourceContext.createLinearGradient(width/2-dx*reach,height/2-dy*reach,width/2+dx*reach,height/2+dy*reach);
+            for (const stop of orderedStops()) gradient.addColorStop(stop.pos / 100, stopColor(stop));
+            sourceContext.fillStyle = '#fff';
+            sourceContext.fillRect(0, 0, width, height);
+            sourceContext.fillStyle = gradient;
+            sourceContext.fillRect(0, 0, width, height);
+            const size = byId('bg-size');
+            const px = size.value && size.validity.valid ? size.valueAsNumber * width / window.innerWidth : width * 0.125;
+            const family = byId('bg-font').value.trim() || 'Arial';
+            sourceContext.font = byId('bg-weight').value + ' ' + px + 'px ' + JSON.stringify(family) + ', sans-serif';
+            sourceContext.fillStyle = byId('bg-ink').value;
+            sourceContext.textAlign = 'center';
+            sourceContext.textBaseline = 'middle';
+            const lines = byId('bg-copy').value.split('\n');
+            lines.forEach((line,i) => sourceContext.fillText(line,width/2,height*0.461 + (i-(lines.length-1)/2)*px*1.12));
+          }
+          byId('bg-image-note').hidden = !uploadedBackground;
+          gl.bindTexture(gl.TEXTURE_2D, texture);
+          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
+        }
+
+        function loadBackgroundImage(file) {
+          if (!file || !file.type.startsWith('image/')) return;
+          const reader = new FileReader();
+          reader.addEventListener('load', () => {
+            const image = new Image();
+            image.addEventListener('load', () => {
+              uploadedBackground = image;
+              drawBackground();
+            }, { once: true });
+            image.src = reader.result;
+          }, { once: true });
+          reader.readAsDataURL(file);
+        }
+
+        function resize() {
+          const scale = Math.min(window.devicePixelRatio || 1, 2);
+          width = Math.round(window.innerWidth * scale);
+          height = Math.round(window.innerHeight * scale);
+          canvas.width = width;
+          canvas.height = height;
+          // A denser field keeps expanding waves round and fluid rather than
+          // revealing the square grid beneath the simulation.
+          rippleHeight = 190;
+          rippleWidth = Math.max(3, Math.round(rippleHeight * width / height));
+          rippleCanvas.width = rippleWidth;
+          rippleCanvas.height = rippleHeight;
+          rippleImage = rippleContext.createImageData(rippleWidth, rippleHeight);
+          rippleLayers = [];
+          rippleComposite = new Float32Array(rippleWidth * rippleHeight);
+          wakeSamples = [];
+          wakeHead = null;
+          distanceSinceWake = 0;
+          nextAmbientWaveAt = performance.now() + randomBetween(350, 700);
+          gl.viewport(0, 0, width, height);
+          drawBackground();
+          uploadRipple(performance.now());
+        }
+
+        function randomBetween(min, max) {
+          return min + Math.random() * (max - min);
+        }
+
+        function createRippleLayer(now, kind) {
+          const size = rippleWidth * rippleHeight;
+          const layer = {
+            born: now,
+            kind,
+            duration: kind === 'wake'
+              ? wakeRippleDuration
+              : kind === 'ambient'
+                ? ambientRippleDuration
+                : clickRippleDuration,
+            current: new Float32Array(size),
+            previous: new Float32Array(size),
+            next: new Float32Array(size),
+          };
+          rippleLayers.push(layer);
+          return layer;
+        }
+
+        function wakeLayer(now) {
+          // Group nearby pointer samples to keep the simulation lightweight.
+          // Every group keeps its own birth time and fades independently.
+          const latest = [...rippleLayers].reverse().find(layer => layer.kind === 'wake');
+          if (latest && latest.kind === 'wake' && now - latest.born < 500) return latest;
+          const layer = createRippleLayer(now, 'wake');
+          // Faster outward propagation opens the mouse wake's V more widely.
+          layer.stiffness = 0.072;
+          return layer;
+        }
+
+        function injectClickRipple(x, y, layer) {
+          // A single soft displacement sets the surface in motion. Size
+          // variation influences both the initial disturbance and its speed.
+          const gridPerPixel = rippleHeight / canvas.getBoundingClientRect().height;
+          // Keep a modest random variation, while letting the visitor choose
+          // the centre of the click-ripple size range.
+          layer.diameter = Math.max(60, Math.min(420, randomBetween(clickRippleSize * 0.72, clickRippleSize * 1.28)));
+          const targetRadius = layer.diameter * 0.5 * gridPerPixel;
+          const radius = Math.max(2.5, Math.min(7, targetRadius * 0.18));
+          layer.stiffness = Math.max(0.007, Math.min(0.1, 0.035 * Math.pow(layer.diameter / 205, 2)));
+          const centerX = x * (rippleWidth - 1);
+          const centerY = y * (rippleHeight - 1);
+          const range = Math.ceil(radius * 3.4);
+          const strength = randomBetween(0.070, 0.100);
+          for (let iy = -range; iy <= range; iy += 1) {
+            for (let ix = -range; ix <= range; ix += 1) {
+              const gridX = Math.round(centerX + ix);
+              const gridY = Math.round(centerY + iy);
+              if (gridX < 1 || gridX >= rippleWidth - 1 || gridY < 1 || gridY >= rippleHeight - 1) continue;
+              const distance = Math.hypot(ix, iy) / radius;
+              const displacement = -Math.exp(-distance * distance * 1.6) * strength;
+              const index = gridY * rippleWidth + gridX;
+              layer.current[index] += displacement;
+              layer.previous[index] += displacement;
+            }
+          }
+        }
+
+        function addClickEffect(event) {
+          const bounds = canvas.getBoundingClientRect();
+          const x = (event.clientX - bounds.left) / bounds.width;
+          const y = (event.clientY - bounds.top) / bounds.height;
+          if (x < 0 || x > 1 || y < 0 || y > 1) return;
+
+          const burst = document.createElement('div');
+          const duration = clickRippleDuration;
+          burst.className = 'click-burst';
+          burst.style.left = `${event.clientX - bounds.left}px`;
+          burst.style.top = `${event.clientY - bounds.top}px`;
+
+          for (let index = 0; index < Math.floor(randomBetween(5, 11)); index += 1) {
+            const angle = randomBetween(0, Math.PI * 2);
+            const distance = randomBetween(18, 68);
+            const element = document.createElement('i');
+            element.className = 'click-star';
+            element.textContent = '✦';
+            element.style.left = `${Math.cos(angle) * distance}px`;
+            element.style.top = `${Math.sin(angle) * distance}px`;
+            element.style.setProperty('--size', `${randomBetween(10, 20)}px`);
+            element.style.setProperty('--delay', `${randomBetween(40, 430)}ms`);
+            element.style.setProperty('--drift-x', `${Math.cos(angle) * randomBetween(5, 16)}px`);
+            element.style.setProperty('--drift-y', `${Math.sin(angle) * randomBetween(5, 16) - 5}px`);
+            element.style.setProperty('--hue', Math.random() > 0.58 ? '278' : '194');
+            burst.append(element);
+          }
+
+          for (let index = 0; index < Math.floor(randomBetween(14, 23)); index += 1) {
+            const angle = randomBetween(0, Math.PI * 2);
+            const distance = randomBetween(10, 58);
+            const element = document.createElement('i');
+            element.className = 'click-particle';
+            element.style.left = `${Math.cos(angle) * distance}px`;
+            element.style.top = `${Math.sin(angle) * distance}px`;
+            element.style.setProperty('--size', `${randomBetween(2, 5)}px`);
+            element.style.setProperty('--delay', `${randomBetween(0, 280)}ms`);
+            element.style.setProperty('--drift-x', `${Math.cos(angle) * randomBetween(12, 38)}px`);
+            element.style.setProperty('--drift-y', `${Math.sin(angle) * randomBetween(12, 38) - 8}px`);
+            element.style.setProperty('--hue', Math.random() > 0.68 ? '272' : '190');
+            burst.append(element);
+          }
+          effectsLayer.append(burst);
+          window.setTimeout(() => burst.remove(), duration);
+          playDropSound();
+          const layer = createRippleLayer(performance.now(), 'click');
+          injectClickRipple(x, y, layer);
+        }
+
+        function addWake(event) {
+          const bounds = canvas.getBoundingClientRect();
+          const x = (event.clientX - bounds.left) / bounds.width;
+          const y = (event.clientY - bounds.top) / bounds.height;
+          if (x < 0 || x > 1 || y < 0 || y > 1) return;
+
+          const now = performance.now();
+          const point = { x, y, time: now };
+          if (!previousPointer) {
+            previousPointer = point;
+            return;
+          }
+
+          const dx = point.x - previousPointer.x;
+          const dy = point.y - previousPointer.y;
+          const distance = Math.hypot(dx * (rippleWidth - 1), dy * (rippleHeight - 1));
+          const elapsed = Math.max(now - previousPointer.time, 16);
+          if (now - previousPointer.time > 180) {
+            previousPointer = point;
+            distanceSinceWake = 0;
+            return;
+          }
+          const speed = distance / elapsed;
+          // Sound follows every meaningful hand movement. Ripple injection
+          // remains spaced for stable visuals, but it must not gate audio.
+          if (distance > 0.025) playWakeSound(speed);
+          const dt = Math.max(1, now - previousPointer.time);
+          const pixelsPerMs = Math.hypot(dx * bounds.width, dy * bounds.height) / dt;
+          const lastSpeed = previousPointer.speed ?? pixelsPerMs;
+          point.speed = lastSpeed + (pixelsPerMs - lastSpeed) * (1 - Math.exp(-dt / 60));
+          if (distance === 0) {
+            previousPointer = point;
+            return;
+          }
+          const directionX = dx * (rippleWidth - 1) / distance;
+          const directionY = dy * (rippleHeight - 1) / distance;
+          const layer = wakeLayer(now);
+          const t = Math.min(1, Math.max(0, (point.speed - 0.1) / 1.1));
+          const fastFraction = t * t * (3 - 2 * t);
+          const openingAngle = wakeOpeningAngle * (1 - 0.55 * fastFraction);
+          const strength = 0.95 - 0.20 * fastFraction;
+          // Deposit directional sources at a stable spatial interval. Each
+          // source contains a *short V pressure field*, not a wide circular
+          // brush stamp; the fields overlap into one continuous wake.
+          const sampleSpacing = 1.45;
+          const startX = previousPointer.x * (rippleWidth - 1);
+          const startY = previousPointer.y * (rippleHeight - 1);
+          const pathStart = previousPointer.pathLength ?? 0;
+          point.pathLength = pathStart + distance;
+          let nextDistance = sampleSpacing - distanceSinceWake;
+          while (nextDistance <= distance) {
+            const fraction = nextDistance / distance;
+            wakeSamples.push({
+              x: startX + dx * (rippleWidth - 1) * fraction,
+              y: startY + dy * (rippleHeight - 1) * fraction,
+              directionX,
+              directionY,
+              strength,
+              openingAngle,
+              pathLength: pathStart + nextDistance,
+              layer,
+            });
+            nextDistance += sampleSpacing;
+          }
+          distanceSinceWake = (distanceSinceWake + distance) % sampleSpacing;
+          previousPointer = point;
+        }
+
+        function injectHull() {
+          for (const sample of wakeSamples) {
+            if (!rippleLayers.includes(sample.layer)) continue;
+            const bowRadius = Math.max(2.35, (bow.width * 0.42 + bow.radius * 0.12) * wakeSpread);
+            const armLength = (11.0 + side.radius * 0.75) * wakeSpread;
+            const halfAngle = (sample.openingAngle * Math.PI) / 360;
+            const openingSlope = Math.tan(halfAngle);
+            const faceWidth = side.width * wakeSpread;
+            // Adjacent samples share long bends that propagate with the water.
+            const phase = sample.pathLength / 11;
+            const leftFlare = 0.95 + 0.40 * Math.sin(phase);
+            const rightFlare = 1.04 + 0.32 * Math.sin(phase * 0.73 + 1.7);
+            const bend = 0.30 * Math.sin(phase * 0.58 + 0.9);
+            const maximumHalfWidth = 2.2 * (faceWidth + armLength * openingSlope);
+            const reach = Math.ceil(Math.max(bowRadius * 2.7, Math.hypot(armLength, maximumHalfWidth)));
+            const amount = (bow.depth + side.depth) * 0.000116 * sample.strength * wakeStrength;
+            const left = Math.max(1, Math.floor(sample.x - reach));
+            const right = Math.min(rippleWidth - 2, Math.ceil(sample.x + reach));
+            const top = Math.max(1, Math.floor(sample.y - reach));
+            const bottom = Math.min(rippleHeight - 2, Math.ceil(sample.y + reach));
+            for (let y = top; y <= bottom; y += 1) {
+              for (let x = left; x <= right; x += 1) {
+                const dx = x - sample.x;
+                const dy = y - sample.y;
+                const forward = dx * sample.directionX + dy * sample.directionY;
+                const sideways = dy * sample.directionX - dx * sample.directionY;
+                const bowDistanceSquared = (forward * forward + sideways * sideways)
+                  / (bowRadius * bowRadius);
+                // A small bow pulse sits at the current contact point. It is
+                // deliberately compact: the wake shape comes from the two
+                // directional pressure arms behind it, rather than from a
+                // chain of large circular stamps.
+        const bowDisplacement = amount * 0.19 * (1.35 * bowDistanceSquared - 1)
+          * Math.exp(-1.65 * bowDistanceSquared);
+
+                // In local path space, negative forward is behind the moving
+                // cursor. The arm centre expands with that trailing distance,
+                // so the actual slider angle controls a real V geometry.
+                const behind = -forward;
+                let displacement = bowDisplacement;
+                if (behind > 0 && behind < armLength) {
+                  const progress = behind / armLength;
+                  const width = faceWidth + behind * openingSlope;
+                  const offset = sideways - width * bend * progress;
+                  const flare = offset < 0 ? leftFlare : rightFlare;
+                  const across = offset / (width * (1 + progress * (flare - 1)));
+                  const envelope = Math.sin(progress * Math.PI) ** 2;
+                  // A single depression widens behind the cursor. Its two
+                  // slopes catch different light as the stroke changes direction.
+                  displacement -= amount * envelope * Math.exp(-2 * across * across);
+                }
+                const index = y * rippleWidth + x;
+                sample.layer.current[index] += displacement;
+                sample.layer.previous[index] += displacement;
+              }
+            }
+          }
+          wakeSamples = [];
+          wakeHead = null;
+        }
+
+        function reflectContainerEdges(field) {
+          // A lake-like page is still a contained volume: a wave that reaches
+          // an edge should return with less energy, rather than disappear
+          // into a hard zero-value border. Mirroring the first interior row
+          // approximates a soft reflective wall without drawing an outline.
+          // Keep the return wave clearly visible, but below the energy of
+          // the arriving wave so it remains a soft water-wall reflection.
+          const returnEnergy = 0.92;
+          const bottomOffset = (rippleHeight - 1) * rippleWidth;
+          for (let x = 1; x < rippleWidth - 1; x += 1) {
+            field[x] = field[rippleWidth + x] * returnEnergy;
+            field[bottomOffset + x] = field[bottomOffset - rippleWidth + x] * returnEnergy;
+          }
+          for (let y = 1; y < rippleHeight - 1; y += 1) {
+            const offset = y * rippleWidth;
+            field[offset] = field[offset + 1] * returnEnergy;
+            field[offset + rippleWidth - 1] = field[offset + rippleWidth - 2] * returnEnergy;
+          }
+        }
+
+        function injectAmbientEdgeWave(now) {
+          if (now < nextAmbientWaveAt || rippleWidth < 3 || rippleHeight < 3) return;
+
+          // Ambient swells meet only the downstream walls. The right and
+          // bottom edges receive the flow from the top-left current, then
+          // return a weaker reflection inward.
+          const layer = createRippleLayer(now, 'ambient');
+          layer.stiffness = 0.055;
+          const rightEdgeWeight = waterCurrent.x / (waterCurrent.x + waterCurrent.y);
+          const edge = Math.random() < rightEdgeWeight ? 1 : 3;
+          const isVerticalEdge = edge < 2;
+          const edgeDistance = randomBetween(5, 9);
+          const along = randomBetween(0.22, 0.78);
+          const centerX = edge === 0
+            ? edgeDistance
+            : edge === 1
+              ? rippleWidth - 1 - edgeDistance
+              : along * (rippleWidth - 1);
+          const centerY = edge === 2
+            ? edgeDistance
+            : edge === 3
+              ? rippleHeight - 1 - edgeDistance
+              : along * (rippleHeight - 1);
+          const acrossRadius = randomBetween(4.0, 6.5);
+          const alongRadius = isVerticalEdge
+            ? randomBetween(30, 46)
+            : randomBetween(20, 32);
+          const reach = Math.ceil(Math.max(acrossRadius, alongRadius) * 2.8);
+          const amplitude = randomBetween(0.038, 0.055) * edgeEnergy;
+          const left = Math.max(1, Math.floor(centerX - reach));
+          const right = Math.min(rippleWidth - 2, Math.ceil(centerX + reach));
+          const top = Math.max(1, Math.floor(centerY - reach));
+          const bottom = Math.min(rippleHeight - 2, Math.ceil(centerY + reach));
+
+          for (let y = top; y <= bottom; y += 1) {
+            for (let x = left; x <= right; x += 1) {
+              const across = isVerticalEdge
+                ? (x - centerX) / acrossRadius
+                : (y - centerY) / acrossRadius;
+              const alongEdge = isVerticalEdge
+                ? (y - centerY) / alongRadius
+                : (x - centerX) / alongRadius;
+              const envelope = Math.exp(-(across * across * 2.7 + alongEdge * alongEdge * 1.35));
+              const index = y * rippleWidth + x;
+              const displacement = -amplitude * envelope;
+              layer.current[index] += displacement;
+              layer.previous[index] += displacement;
+            }
+          }
+          nextAmbientWaveAt = now + randomBetween(2400, 3600);
+        }
+
+        function stepRipples(now) {
+          const damping = 0.993;
+          rippleLayers = rippleLayers.filter(layer => now - layer.born < layer.duration);
+          injectAmbientEdgeWave(now);
+          // Each layer has a discrete life: clicks 3s, wakes 4s, ambient edge
+          // events 4.2s. No old field can reappear after a new interaction.
+          for (const layer of rippleLayers) {
+            const stiffness = layer.stiffness ?? 0.035;
+            const current = layer.current;
+            const previous = layer.previous;
+            const next = layer.next;
+            for (let y = 1; y < rippleHeight - 1; y += 1) {
+              for (let x = 1; x < rippleWidth - 1; x += 1) {
+                const index = y * rippleWidth + x;
+                const cardinal = current[index - 1] + current[index + 1]
+                  + current[index - rippleWidth] + current[index + rippleWidth];
+                const diagonal = current[index - rippleWidth - 1]
+                  + current[index - rippleWidth + 1]
+                  + current[index + rippleWidth - 1]
+                  + current[index + rippleWidth + 1];
+                const laplacian = (cardinal * 4 + diagonal - 20 * current[index]) / 6;
+                next[index] = (2 * current[index] - previous[index] + stiffness * laplacian) * damping;
+              }
+            }
+            reflectContainerEdges(next);
+            layer.previous = current;
+            layer.current = next;
+            layer.next = previous;
+          }
+          injectHull();
+        }
+
+        function uploadRipple(now) {
+          if (!rippleImage) return;
+          rippleComposite.fill(0);
+          for (const layer of rippleLayers) {
+            const progress = Math.min(1, Math.max(0, (now - layer.born) / layer.duration));
+            const fade = Math.max(0, (progress - 0.15) / 0.85);
+            const strength = 1 - fade * fade * (3 - 2 * fade);
+            for (let index = 0; index < rippleComposite.length; index += 1) {
+              rippleComposite[index] += layer.current[index] * strength;
+            }
+          }
+          for (let index = 0; index < rippleComposite.length; index += 1) {
+            const value = Math.max(-0.48, Math.min(0.48, rippleComposite[index]));
+            const packed = Math.round(value * 32768 + 32768);
+            const pixel = index * 4;
+            rippleImage.data[pixel] = packed >> 8;
+            rippleImage.data[pixel + 1] = packed & 255;
+            rippleImage.data[pixel + 2] = 0;
+            rippleImage.data[pixel + 3] = 255;
+          }
+          rippleContext.putImageData(rippleImage, 0, 0);
+          gl.activeTexture(gl.TEXTURE1);
+          gl.bindTexture(gl.TEXTURE_2D, rippleTexture);
+          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, rippleCanvas);
+        }
+
+        const stepMs = 1000 / 60;
+        let simulationTime = null;
+
+        function render(milliseconds) {
+          // Limit catch-up after a suspended tab or a long frame.
+          simulationTime = Math.max(simulationTime ?? milliseconds - stepMs, milliseconds - 4 * stepMs);
+          let advanced = false;
+          while (milliseconds - simulationTime >= stepMs - 0.00001) {
+            simulationTime += stepMs;
+            stepRipples(simulationTime);
+            advanced = true;
+          }
+          if (advanced) uploadRipple(milliseconds);
+          gl.useProgram(program);
+          gl.bindBuffer(gl.ARRAY_BUFFER, vertices);
+          gl.enableVertexAttribArray(position);
+          gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, texture);
+          gl.uniform1i(background, 0);
+          gl.activeTexture(gl.TEXTURE1);
+          gl.bindTexture(gl.TEXTURE_2D, rippleTexture);
+          gl.uniform1i(rippleUniform, 1);
+          gl.uniform2f(resolution, width, height);
+          gl.uniform2f(rippleTexelUniform, 1 / rippleWidth, 1 / rippleHeight);
+          gl.uniform1f(time, milliseconds * 0.001);
+          gl.uniform1f(rippleStrengthUniform, 1);
+          gl.uniform4fv(shadowUniform, shadow);
+          gl.uniform1f(highlightsUniform, highlights);
+          gl.uniform1f(refractionUniform, refractionStrength);
+          gl.uniform3fv(depthColorUniform, depthColor);
+          gl.uniform1f(depthOpacityUniform, depthOpacity);
+          gl.drawArrays(gl.TRIANGLES, 0, 6);
+        }
+
+        resize();
+        stage.classList.add('is-ready');
+        window.addEventListener('resize', resize, { passive: true });
+        canvas.addEventListener('pointermove', addWake, { passive: true });
+        canvas.addEventListener('click', addClickEffect, { passive: true });
+        canvas.addEventListener('pointerleave', () => {
+          previousPointer = null;
+          wakeHead = null;
+          distanceSinceWake = 0;
+        });
+        soundToggle.addEventListener('click', async () => {
+          if (!soundEnabled) {
+            soundEnabled = true;
+            // This user-gesture-triggered silent start primes decoding and
+            // playback before the first swipe. It produces no idle ambience.
+            stirAudio.pause();
+            stirAudio.currentTime = 0;
+            stirAudio.volume = 0;
+            stirAudio.play().catch(() => {});
+            stirVolumeTimer = window.setInterval(updateStirVolume, 32);
+          } else {
+            soundEnabled = false;
+            stirAudio.pause();
+            stirAudio.volume = 0;
+            lastStirAt = 0;
+            stirMotionEnergy = 0;
+            clearInterval(stirVolumeTimer);
+            stirVolumeTimer = null;
+          }
+          soundToggle.setAttribute('aria-pressed', String(soundEnabled));
+          soundToggle.setAttribute('aria-label', soundEnabled ? 'Turn off interaction sounds' : 'Turn on interaction sounds');
+          soundLabel.textContent = soundEnabled ? 'Sound on' : 'Sound off';
+        });
+        document.addEventListener('visibilitychange', () => {
+          if (!soundEnabled) return;
+          if (document.hidden) {
+            stirAudio.pause();
+            stirAudio.volume = 0;
+            lastStirAt = 0;
+            stirMotionEnergy = 0;
+          }
+        });
+        controlToggle.addEventListener('click', () => {
+          const isOpen = controls.hidden;
+          controls.hidden = !isOpen;
+          controlToggle.setAttribute('aria-expanded', String(isOpen));
+          controlToggle.setAttribute('aria-label', isOpen ? 'Close water controls' : 'Open water controls');
+        });
+        backgroundUpload.addEventListener('change', (event) => loadBackgroundImage(event.target.files?.[0]));
+        resetBackground.addEventListener('click', () => {
+          uploadedBackground = null;
+          backgroundUpload.value = '';
+          drawBackground();
+        });
+
+        function bindRippleControl(selector, format, update) {
+          const input = document.querySelector(selector);
+          const output = input.nextElementSibling;
+          const apply = () => {
+            const value = Number(input.value);
+            update(value);
+            output.textContent = format(value);
+          };
+          input.addEventListener('input', apply);
+          apply();
+        }
+
+        const track = byId('grad-track');
+        function paintStops() {
+          track.style.background = 'linear-gradient(to right,' + orderedStops().map(stop => stopColor(stop)+' '+stop.pos+'%').join(',') + '), white';
+          stops.forEach((stop,i) => {
+            const handle = track.children[i];
+            handle.style.left = stop.pos+'%';
+            handle.style.background = stop.color;
+            handle.title = 'Stop '+(i+1)+' at '+stop.pos+'%';
+          });
+          drawBackground();
+        }
+        function buildStops() {
+          track.replaceChildren();
+          byId('grad-stops').replaceChildren();
+          for (const [index,stop] of stops.entries()) {
+            const handle = document.createElement('button');
+            handle.setAttribute('aria-label','Move stop '+(index+1));
+            track.append(handle);
+            const row = document.createElement('div');
+            row.className = 'stop-row';
+            row.innerHTML = '<input type="number" min="0" max="100" aria-label="Stop position"> % <input type="color" aria-label="Stop color"><input type="number" min="0" max="100" aria-label="Stop opacity"> % <button aria-label="Remove stop">−</button>';
+            byId('grad-stops').append(row);
+            const [pos,color,alpha,remove] = row.children;
+            pos.value = stop.pos; color.value = stop.color; alpha.value = stop.alpha;
+            remove.disabled = stops.length <= 2;
+            remove.onclick = () => { stops.splice(index,1); buildStops(); };
+            row.oninput = () => {
+              if (!pos.value || !alpha.value || !pos.validity.valid || !alpha.validity.valid) return;
+              Object.assign(stop,{pos:pos.valueAsNumber,color:color.value,alpha:alpha.valueAsNumber});
+              paintStops();
+            };
+            function move(value) {
+              pos.value = stop.pos = Math.max(0,Math.min(100,Math.round(value)));
+              paintStops();
+            }
+            handle.onpointerdown = e => handle.setPointerCapture(e.pointerId);
+            handle.onpointermove = e => {
+              if (handle.hasPointerCapture(e.pointerId)) move((e.clientX-track.getBoundingClientRect().left)*100/track.clientWidth);
+            };
+            handle.onkeydown = e => {
+              if (!['ArrowLeft','ArrowRight'].includes(e.key)) return;
+              e.preventDefault(); move(stop.pos+(e.key==='ArrowRight'?1:-1));
+            };
+          }
+          paintStops();
+        }
+        byId('grad-add').onclick = () => {
+          const sorted = orderedStops();
+          let i = 1;
+          for (let j=2;j<sorted.length;j++) if (sorted[j].pos-sorted[j-1].pos > sorted[i].pos-sorted[i-1].pos) i=j;
+          const a=sorted[i-1], b=sorted[i];
+          const rgb=[1,3,5].map(k=>Math.round((parseInt(a.color.slice(k,k+2),16)+parseInt(b.color.slice(k,k+2),16))/2).toString(16).padStart(2,'0')).join('');
+          stops.push({pos:Math.round((a.pos+b.pos)/2),color:'#'+rgb,alpha:Math.round((a.alpha+b.alpha)/2)});
+          stops.sort((a,b)=>a.pos-b.pos); buildStops();
+        };
+        byId('grad-flip').onclick = () => { stops.reverse().forEach(s=>s.pos=100-s.pos); buildStops(); };
+        byId('grad-rotate').onclick = () => { rotation=(rotation+90)%360; drawBackground(); };
+        buildStops();
+        for (const id of ['bg-copy','bg-font','bg-size','bg-weight','bg-ink']) {
+          byId(id).oninput = () => {
+            document.querySelector('.fallback-title').textContent = byId('bg-copy').value;
+            drawBackground();
+          };
+        }
+        byId('bg-library').onclick = async () => {
+          const status = byId('font-status');
+          if (!window.queryLocalFonts) {
+            status.textContent='Enter an installed font family name in the Font field.';
+            return;
+          }
+          try {
+            const families = [...new Set((await window.queryLocalFonts()).map(font=>font.family))].sort();
+            byId('bg-fonts').replaceChildren(...families.map(name=>new Option(name,name)));
+            status.textContent=families.length+' local families available. Type a name to filter.';
+            byId('bg-font').focus();
+          } catch {
+            status.textContent='Font library access is unavailable. Enter an installed family name above.';
+          }
+        };
+        const plane = document.querySelector('#shadow-plane');
+        const hue = document.querySelector('#shadow-hue');
+        const hex = document.querySelector('#shadow-hex');
+        let saturation = 0;
+        let value = 1;
+
+        function showShadow() {
+          const h = Number(hue.value) / 60;
+          const rgb = [5, 3, 1].map(offset => {
+            const k = (offset + h) % 6;
+            return value * (1 - saturation * Math.max(0, Math.min(k, 4 - k, 1)));
+          });
+          shadow = [...rgb, shadow[3]];
+          hex.value = '#' + rgb.map(c => Math.round(c * 255).toString(16).padStart(2, '0')).join('').toUpperCase();
+          document.querySelector('#shadow-chip').style.backgroundColor = hex.value;
+          plane.style.setProperty('--hue', 'hsl(' + hue.value + ' 100% 50%)');
+          plane.firstElementChild.style.left = saturation * 100 + '%';
+          plane.firstElementChild.style.top = (1 - value) * 100 + '%';
+        }
+
+        function readHex() {
+          const match = /^#?([0-9a-f]{6})$/i.exec(hex.value.trim());
+          if (match) {
+            const [r,g,b] = match[1].match(/../g).map(pair => parseInt(pair, 16) / 255);
+            value = Math.max(r,g,b);
+            const delta = value - Math.min(r,g,b);
+            saturation = value ? delta / value : 0;
+            if (delta) {
+              const sector = value === r ? (g-b)/delta : value === g ? 2+(b-r)/delta : 4+(r-g)/delta;
+              hue.value = (sector * 60 + 360) % 360;
+            }
+          }
+          showShadow();
+        }
+
+        function pickPoint(event) {
+          const bounds = plane.getBoundingClientRect();
+          saturation = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width));
+          value = 1 - Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height));
+          showShadow();
+        }
+        plane.addEventListener('pointerdown', event => {
+          plane.setPointerCapture(event.pointerId);
+          pickPoint(event);
+        });
+        plane.addEventListener('pointermove', event => {
+          if (plane.hasPointerCapture(event.pointerId)) pickPoint(event);
+        });
+        hue.step = 'any';
+        hue.addEventListener('input', showShadow);
+        hex.addEventListener('change', readHex);
+        readHex();
+        const sample = document.querySelector('#sample-shadow');
+        if (window.EyeDropper) {
+          sample.hidden = false;
+          sample.addEventListener('click', async () => {
+            try {
+              hex.value = (await new EyeDropper().open()).sRGBHex;
+              readHex();
+            } catch (error) {
+              if (error.name !== 'AbortError') console.warn(error);
+            }
+          });
+        }
+        bindRippleControl('#shadow-opacity', value => value + '%', value => { shadow[3] = value / 100; });
+        bindRippleControl('#highlights', value => value + '%', value => { highlights = value / 100; });
+        bindRippleControl('#refraction', value => value + '%', value => { refractionStrength = value / 100; });
+
+        bindRippleControl('#click-size', (value) => `${value} px`, (value) => { clickRippleSize = value; });
+        bindRippleControl('#click-fade', (value) => `${value} s`, (value) => { clickRippleDuration = value * 1000; });
+        bindRippleControl('#wake-strength', (value) => `${value}%`, (value) => { wakeStrength = value / 100; });
+        bindRippleControl('#wake-width', (value) => `${value}%`, (value) => { wakeSpread = value / 100; });
+        bindRippleControl('#wake-angle', (value) => `${value}°`, (value) => { wakeOpeningAngle = value; });
+        bindRippleControl('#wake-fade', (value) => `${value} s`, (value) => { wakeRippleDuration = value * 1000; });
+        bindRippleControl('#edge-energy', (value) => `${value}%`, (value) => { edgeEnergy = value / 100; });
+        bindRippleControl('#audio-volume', (value) => `${value}%`, (value) => { audioVolume = value / 100; });
+
+        if (reduceMotion.matches) {
+          render(0);
+        } else {
+          const frame = (now) => {
+            render(now);
+            requestAnimationFrame(frame);
+          };
+          requestAnimationFrame(frame);
+        }
+      })();
+    </script>
+  </body>
+</html>
