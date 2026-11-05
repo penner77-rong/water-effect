@@ -1,5 +1,7 @@
-# Water Effect
+## Live demo
+[🌊 Try the interactive water effect](https://pener6217-debug.github.io/water-effect/)
 
+# Water Effect
 A full-screen interactive water experiment built with HTML, JavaScript, WebGL, and two local audio files. Current documented baseline is November 5, 2026.
 
 ## Run
