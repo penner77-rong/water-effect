@@ -1,4 +1,4 @@
-# Hello World Water Effect
+# Water Effect
 
 A full-screen interactive water experiment built with HTML, JavaScript, WebGL, and two local audio files. Current documented baseline is November 5, 2026.
 
